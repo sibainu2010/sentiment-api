@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentiment Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#09090f; color:#e2e2f0; font-family:'JetBrains Mono',monospace; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem; }
+body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(99,102,241,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.04) 1px,transparent 1px); background-size:44px 44px; pointer-events:none; }
+.wrap { width:100%; max-width:640px; position:relative; z-index:1; }
+.badge { display:inline-flex; align-items:center; gap:6px; font-size:0.6rem; letter-spacing:0.18em; color:#6366f1; text-transform:uppercase; margin-bottom:1rem; }
+.badge-dot { width:6px; height:6px; background:#6366f1; border-radius:50%; animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+h1 { font-family:'Unbounded',sans-serif; font-size:clamp(1.8rem,6vw,2.8rem); font-weight:900; letter-spacing:-0.03em; line-height:1.05; background:linear-gradient(135deg,#e2e2f0,#7878a8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:0.5rem; }
+.sub { font-size:0.72rem; color:#44445a; letter-spacing:0.06em; margin-bottom:2.5rem; }
+.card { background:#10101a; border:1px solid #1c1c2e; border-radius:18px; padding:1.8rem; margin-bottom:1.2rem; position:relative; overflow:hidden; }
+.card::after { content:''; position:absolute; top:0; left:10%; right:10%; height:1px; background:linear-gradient(90deg,transparent,#6366f133,transparent); }
+label { font-size:0.6rem; letter-spacing:0.16em; color:#44445a; text-transform:uppercase; display:block; margin-bottom:0.7rem; }
+textarea { width:100%; background:#0c0c16; border:1px solid #1c1c2e; border-radius:10px; color:#e2e2f0; font-family:'JetBrains Mono',monospace; font-size:0.85rem; line-height:1.75; padding:0.9rem 1.1rem; resize:vertical; min-height:110px; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+textarea:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
+textarea::placeholder { color:#2e2e44; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:0.8rem; align-items:center; }
+.chip-label { font-size:0.58rem; color:#44445a; letter-spacing:0.08em; text-transform:uppercase; }
+.chip { background:transparent; border:1px solid #1c1c2e; border-radius:6px; color:#44445a; font-family:'JetBrains Mono',monospace; font-size:0.65rem; padding:4px 10px; cursor:pointer; transition:all 0.15s; }
+.chip:hover { border-color:#6366f1; color:#6366f1; background:rgba(99,102,241,0.06); }
+.btn { width:100%; margin-top:1.2rem; padding:0.95rem; background:#6366f1; border:none; border-radius:10px; color:#fff; font-family:'Unbounded',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
+.btn:hover:not(:disabled) { background:#818cf8; transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn:disabled { opacity:0.35; cursor:not-allowed; }
+.spinner { display:none; width:15px; height:15px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; margin:0 auto; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.btn.loading .btn-text { display:none; }
+.btn.loading .spinner { display:block; }
+.result { display:none; border-radius:18px; padding:1.8rem; animation:up 0.3s cubic-bezier(0.16,1,0.3,1); margin-bottom:1.2rem; }
+@keyframes up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.result.pos { display:block; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); }
+.result.neg { display:block; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); }
+.result-top { display:flex; align-items:center; gap:1rem; margin-bottom:1.2rem; }
+.emoji { font-size:2.6rem; line-height:1; }
+.result-label { font-family:'Unbounded',sans-serif; font-size:1.6rem; font-weight:900; letter-spacing:-0.02em; }
+.pos .result-label { color:#10b981; }
+.neg .result-label { color:#ef4444; }
+.result-sub { font-size:0.62rem; color:#44445a; letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; }
+.conf-row { display:flex; justify-content:space-between; font-size:0.6rem; color:#44445a; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+.bar-bg { height:3px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden; margin-bottom:1.2rem; }
+.bar-fill { height:100%; border-radius:2px; width:0; transition:width 0.8s cubic-bezier(0.16,1,0.3,1); }
+.pos .bar-fill { background:#10b981; }
+.neg .bar-fill { background:#ef4444; }
+.lemma-block { padding:0.75rem 1rem; background:rgba(0,0,0,0.25); border-radius:8px; border-left:2px solid #1c1c2e; }
+.lemma-label { font-size:0.58rem; color:#44445a; letter-spacing:0.14em; text-transform:uppercase; margin-bottom:5px; }
+.lemma-text { font-size:0.75rem; color:#44445a; line-height:1.65; word-break:break-word; }
+.err { display:none; font-size:0.72rem; color:#ef4444; padding:0.6rem 0.8rem; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.18); border-radius:7px; margin-top:0.8rem; }
+footer { text-align:center; font-size:0.6rem; color:#2a2a3e; letter-spacing:0.08em; margin-top:1rem; }
+footer span { color:#6366f1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="badge"><span class="badge-dot"></span>DS Diploma / NLP / LinearSVC</div>
+  <h1>Sentiment<br>Analyzer</h1>
+  <p class="sub">// анализ тональности русскоязычных отзывов</p>
+  <div class="card">
+    <label>Введи отзыв</label>
+    <textarea id="inp" placeholder="Например: Отличное обслуживание, всё понравилось..."></textarea>
+    <div class="chips">
+      <span class="chip-label">примеры:</span>
+      <button class="chip" onclick="set('Отличный сервис! Персонал внимательный, всё понравилось, обязательно вернусь.')">позитив</button>
+      <button class="chip" onclick="set('Полный кошмар. Час ждали, никто не подошёл, нахамили на кассе.')">негатив</button>
+      <button class="chip" onclick="set('Еда вкусная, но ждать пришлось очень долго и столики грязные.')">смешанный</button>
+    </div>
+    <button class="btn" id="btn" onclick="run()">
+      <span class="btn-text">Анализировать</span>
+      <div class="spinner"></div>
+    </button>
+    <div class="err" id="err"></div>
+  </div>
+  <div class="result" id="res">
+    <div class="result-top">
+      <div class="emoji" id="emoji"></div>
+      <div>
+        <div class="result-label" id="rlabel"></div>
+        <div class="result-sub">тональность отзыва</div>
+      </div>
+    </div>
+    <div class="conf-row"><span>уверенность модели</span><span id="confval"></span></div>
+    <div class="bar-bg"><div class="bar-fill" id="bar"></div></div>
+    <div class="lemma-block">
+      <div class="lemma-label">после лемматизации</div>
+      <div class="lemma-text" id="lemma"></div>
+    </div>
+  </div>
+  <footer>модель: <span>LinearSVC + TF-IDF</span> &nbsp;·&nbsp; порог: <span>-0.197</span> &nbsp;·&nbsp; F1 <span>&gt; 0.90</span></footer>
+</div>
+<script>
+function set(t) { document.getElementById('inp').value = t; }
+async function run() {
+  const text = document.getElementById('inp').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  const res = document.getElementById('res');
+  btn.classList.add('loading'); btn.disabled = true;
+  err.style.display = 'none'; res.className = 'result';
+  try {
+    const r = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text}) });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    document.getElementById('emoji').textContent = d.emoji;
+    document.getElementById('rlabel').textContent = d.label;
+    document.getElementById('confval').textContent = d.confidence + '%';
+    document.getElementById('lemma').textContent = d.clean_text;
+    res.className = 'result ' + (d.label === 'Позитивный' ? 'pos' : 'neg');
+    setTimeout(() => { document.getElementById('bar').style.width = d.confidence + '%'; }, 50);
+  } catch(e) {
+    err.textContent = 'Сервер недоступен. Убедись что API запущен.';
+    err.style.display = 'block';
+  } finally {
+    btn.classList.remove('loading'); btn.disabled = false;
+  }
+}
+document.getElementById('inp').addEventListener('keydown', e => { if (e.key==='Enter' && e.ctrlKey) run(); });
+</script>
+</body>
+</html>
