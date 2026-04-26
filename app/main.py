@@ -27,7 +27,8 @@ class ReviewOut(BaseModel): label: str; emoji: str; confidence: int; clean_text:
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with open("app/index.html", encoding="utf-8") as f: return f.read()
+    BASE = os.path.dirname(__file__)
+    with open(os.path.join(BASE, "index.html"), encoding="utf-8") as f: return f.read()
 
 @app.post("/predict", response_model=ReviewOut)
 def predict(req: ReviewIn):
